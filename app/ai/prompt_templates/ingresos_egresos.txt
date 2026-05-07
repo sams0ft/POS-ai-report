@@ -1,0 +1,17 @@
+Analiza los ingresos y egresos de {empresa} durante el período {periodo}.
+
+## Datos del análisis
+
+{datos}
+
+## Instrucciones
+
+Genera un reporte financiero que incluya:
+
+1. **Resumen financiero**: Total ingresos, total egresos, utilidad neta, margen neto.
+2. **Tendencia**: Comparación con período anterior. ¿Subiendo o bajando?
+3. **Desglose de egresos**: Principales categorías de gasto y su proporción.
+4. **Proyección**: Estimación para los próximos 30, 60 y 90 días basada en la tendencia.
+5. **Sugerencias**: Mínimo 3 acciones concretas para mejorar el margen.
+
+Responde en español colombiano. Usa moneda COP. Sé específico con los números.

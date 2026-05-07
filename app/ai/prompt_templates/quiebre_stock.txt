@@ -1,0 +1,17 @@
+Analiza el riesgo de quiebre de stock para {empresa} durante el período {periodo}.
+
+## Datos del análisis
+
+{datos}
+
+## Instrucciones
+
+Genera un reporte de predicción de quiebre de stock:
+
+1. **Alerta roja**: Productos que se agotan en menos de 7 días al ritmo actual. Indicar días restantes y urgencia.
+2. **Alerta amarilla**: Productos que se agotan en 7-14 días.
+3. **Recomendación de compra**: Para cada producto en alerta, indicar cantidad sugerida, proveedor, y tiempo estimado de entrega.
+4. **Productos con sobrestock**: Productos con más inventario del necesario (dinero parado).
+5. **Cantidades óptimas de reorden**: Basado en velocidad de venta y lead time del proveedor.
+
+Responde en español colombiano. Usa moneda COP. Cada alerta con acción concreta.

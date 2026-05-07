@@ -1,0 +1,19 @@
+Evalúa la salud general del negocio {empresa} durante el período {periodo}.
+
+## Datos del análisis
+
+{datos}
+
+## Instrucciones
+
+Genera un Score de Salud del Negocio (0-100) con desglose:
+
+1. **Score total**: Número de 0 a 100 con interpretación (crítico/bajo/medio/bueno/excelente).
+2. **Margen** (0-25 pts): ¿El margen de ganancia es saludable? ¿Mejorando o empeorando?
+3. **Rotación** (0-25 pts): ¿Los productos rotan a buena velocidad? ¿Hay dinero parado en inventario?
+4. **Desperdicio** (0-25 pts): ¿Cuánto se pierde por productos vencidos o dañados?
+5. **Tendencia** (0-25 pts): ¿El negocio va para arriba o para abajo? Comparar con período anterior.
+6. **Diagnóstico ejecutivo**: Resumen en 3-4 oraciones que un dueño de tienda entienda inmediatamente.
+7. **Top 3 acciones prioritarias**: Las 3 cosas más importantes que debe hacer AHORA para mejorar el score.
+
+Responde en español colombiano. Usa moneda COP. El tono debe ser directo y de confianza, como un asesor experto hablándole al dueño.

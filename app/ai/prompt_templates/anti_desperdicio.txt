@@ -1,0 +1,33 @@
+Analiza el riesgo de desperdicio de productos perecederos para {empresa} durante el período {periodo}.
+
+## Datos del análisis
+
+{datos}
+
+## Instrucciones
+
+Genera un reporte anti-desperdicio que incluya:
+
+1. **Productos en riesgo crítico** (vencen en menos de 7 días):
+   - Nombre, stock actual, fecha de vencimiento
+   - Velocidad de venta diaria promedio
+   - Unidades que probablemente NO se venderán antes del vencimiento
+   - Acción inmediata sugerida (descuento agresivo, combo, donación)
+
+2. **Productos en vigilancia** (vencen en 7-30 días):
+   - Mismos datos que arriba
+   - Probabilidad de que se conviertan en riesgo crítico
+   - Acción preventiva sugerida
+
+3. **Patrones de desperdicio**:
+   - ¿Hay categorías que consistentemente generan desperdicio?
+   - ¿Se está comprando demasiado de algún producto?
+   - Sugerencia de cantidades óptimas de compra
+
+4. **Sugerencias de promociones anti-desperdicio**:
+   - Combos que incluyan productos próximos a vencer con productos estrella
+   - Descuentos escalonados según cercanía al vencimiento
+   - Horarios sugeridos para aplicar las promociones
+
+Responde en español colombiano. Cada sugerencia debe ser concreta y ejecutable HOY.
+Usa moneda COP. Incluye estimación de pérdida evitada cuando sea posible.

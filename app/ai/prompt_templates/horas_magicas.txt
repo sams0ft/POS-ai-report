@@ -1,0 +1,17 @@
+Analiza los patrones de venta por hora y día de la semana para {empresa} durante el período {periodo}.
+
+## Datos del análisis
+
+{datos}
+
+## Instrucciones
+
+Genera un reporte de "horas mágicas" que incluya:
+
+1. **Horas pico**: Las 3 franjas horarias con más ventas. Indicar monto promedio y volumen.
+2. **Horas valle**: Las 3 franjas con menos actividad.
+3. **Patrones por día**: ¿Qué días son más fuertes? ¿Cuáles más débiles?
+4. **Sugerencias de personal**: Cuándo reforzar y cuándo reducir personal.
+5. **Sugerencias de promociones por horario**: Promociones específicas para horas valle.
+
+Responde en español colombiano. Usa moneda COP. Sé concreto con horarios y días.

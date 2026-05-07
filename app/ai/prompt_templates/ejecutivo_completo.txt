@@ -1,0 +1,19 @@
+Genera un reporte ejecutivo completo para {empresa} correspondiente al período {periodo}.
+
+## Datos del análisis
+
+{datos}
+
+## Instrucciones
+
+Este es el reporte más importante. Combina todos los análisis en un resumen ejecutivo:
+
+1. **Resumen de 30 segundos**: En un párrafo, ¿cómo le fue al negocio? ¿Bien o mal? ¿Por qué?
+2. **Score de salud**: Número 0-100 con interpretación.
+3. **Finanzas**: Ingresos, egresos, utilidad, tendencia.
+4. **Productos destacados**: Top 3 y Bottom 3 con acción para cada uno.
+5. **Alertas urgentes**: ¿Hay productos por vencer? ¿Quiebre de stock inminente?
+6. **Oportunidades**: Promociones sugeridas, precios a ajustar, horarios a aprovechar.
+7. **Plan de acción semanal**: 5 acciones concretas priorizadas para la próxima semana.
+
+Responde en español colombiano. Usa moneda COP. Escribe como un asesor de negocios de confianza que le habla directo al dueño de la tienda. Sin tecnicismos innecesarios.

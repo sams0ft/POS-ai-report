@@ -1,0 +1,17 @@
+Analiza la elasticidad precio-demanda de los productos de {empresa} durante el período {periodo}.
+
+## Datos del análisis
+
+{datos}
+
+## Instrucciones
+
+Genera un reporte de precio óptimo que incluya:
+
+1. **Productos con margen mejorable**: Productos donde un ajuste de precio podría aumentar ingresos.
+2. **Simulaciones**: Para cada producto sugerido, modela: "Si el precio sube/baja X%, las ventas cambian Y%, y el ingreso neto cambia Z%".
+3. **Productos subvalorados**: Que se venden bien y podrían soportar un precio mayor.
+4. **Productos sobrevalorados**: Que venden poco y podrían beneficiarse de un precio menor.
+5. **Plan de acción**: Qué precios cambiar, en qué orden, y cómo medir el impacto.
+
+Responde en español colombiano. Usa moneda COP. Cada sugerencia con impacto estimado en pesos.

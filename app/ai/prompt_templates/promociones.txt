@@ -1,0 +1,17 @@
+Diseña promociones inteligentes para {empresa} basándote en los datos del período {periodo}.
+
+## Datos del análisis
+
+{datos}
+
+## Instrucciones
+
+Genera un reporte de promociones que incluya:
+
+1. **Combos por afinidad**: Productos que se compran juntos frecuentemente. Sugerir combos con precio y descuento.
+2. **Rescate de productos estancados**: Combinar productos de baja rotación con productos estrella en ofertas atractivas.
+3. **Promociones anti-vencimiento**: Ofertas para productos perecederos próximos a vencer.
+4. **Promociones por horario**: Ofertas para horas valle que atraigan más clientes.
+5. **Para cada promoción**: Nombre atractivo, productos incluidos, precio normal vs precio promocional, duración sugerida, impacto estimado.
+
+Responde en español colombiano. Usa moneda COP. Las promociones deben ser realistas para tiendas/minimarkets.

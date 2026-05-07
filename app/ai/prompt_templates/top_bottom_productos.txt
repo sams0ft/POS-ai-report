@@ -1,0 +1,29 @@
+Analiza el rendimiento de productos para {empresa} durante el período {periodo}.
+
+## Datos del análisis
+
+{datos}
+
+## Instrucciones
+
+Genera un reporte que incluya:
+
+1. **Top 5 productos**: Identifica los 5 productos con mejor rendimiento. Para cada uno indica:
+   - Nombre y categoría
+   - Unidades vendidas y tendencia (subiendo/bajando/estable)
+   - Margen de ganancia
+   - Por qué está funcionando bien
+
+2. **Bottom 5 productos**: Identifica los 5 productos con peor rendimiento. Para cada uno indica:
+   - Nombre y categoría
+   - Unidades vendidas y tendencia
+   - Margen de ganancia
+   - Acción sugerida: ¿descontinuar? ¿reubicar? ¿promocionar? ¿ajustar precio?
+
+3. **Sugerencias accionables**: Mínimo 3 sugerencias específicas con:
+   - QUÉ hacer exactamente
+   - POR QUÉ (basado en los datos)
+   - Impacto estimado en ventas o margen
+
+Responde en español colombiano. Sé directo y específico, no uses frases genéricas.
+Usa moneda COP para valores monetarios.

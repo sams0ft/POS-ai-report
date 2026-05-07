@@ -1,0 +1,42 @@
+# Framework
+fastapi==0.115.*
+uvicorn[standard]==0.34.*
+pydantic==2.*
+pydantic-settings==2.*
+
+# Base de datos
+sqlalchemy[asyncio]==2.*
+asyncpg==0.30.*
+alembic==1.14.*
+
+# Redis y Celery
+redis==5.*
+celery[redis]==5.*
+
+# Analytics
+pandas==2.*
+numpy==2.*
+scikit-learn==1.6.*
+statsmodels==0.14.*
+prophet==1.1.*
+mlxtend==0.23.*  # Apriori algorithm
+
+# LLM clients
+anthropic==0.42.*
+google-genai==1.*
+
+# PDF generation
+weasyprint==63.*
+
+# Logging
+structlog==24.*
+
+# Testing
+pytest==8.*
+pytest-asyncio==0.24.*
+pytest-cov==6.*
+httpx==0.28.*  # async test client
+
+# Utils
+python-dotenv==1.*
+httpx==0.28.*
