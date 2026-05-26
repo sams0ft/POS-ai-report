@@ -2,6 +2,7 @@
 
 from datetime import date, datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -39,6 +40,25 @@ class ReportRequest(BaseModel):
     parametros: dict | None = Field(default=None, description="Parámetros adicionales por tipo")
 
 
+class InsightItem(BaseModel):
+    """Hallazgo del análisis (mapea 1:1 a system_pos.insight_ia)."""
+
+    titulo: str
+    descripcion: str
+    severidad: str = "info"  # info | success | warning | error | critical
+
+
+class RecomendacionItem(BaseModel):
+    """Acción sugerida (mapea 1:1 a system_pos.recomendacion_ia)."""
+
+    titulo: str
+    descripcion: str
+    accion_sugerida: str
+    prioridad: str = "media"  # baja | media | alta | critica
+    impacto_estimado: float | None = None
+    producto_id: int | None = None
+
+
 class ReportResponse(BaseModel):
     """Respuesta con el reporte generado o su estado."""
 
@@ -53,6 +73,12 @@ class ReportResponse(BaseModel):
 
     # Contenido del reporte (solo cuando status=completed)
     resumen: str | None = None
-    datos: dict | None = Field(default=None, description="Datos numéricos del análisis")
-    sugerencias: list[str] | None = Field(default=None, description="Sugerencias generadas por IA")
-    pdf_url: str | None = None
+    datos: dict[str, Any] | None = Field(
+        default=None, description="Datos numéricos del análisis"
+    )
+    insights: list[InsightItem] = Field(
+        default_factory=list, description="Hallazgos generados por IA"
+    )
+    recomendaciones: list[RecomendacionItem] = Field(
+        default_factory=list, description="Acciones sugeridas por IA"
+    )

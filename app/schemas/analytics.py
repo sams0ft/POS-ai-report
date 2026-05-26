@@ -1,6 +1,6 @@
 """Schemas para datos analíticos intermedios."""
 
-from datetime import date, datetime
+from datetime import date
 
 from pydantic import BaseModel
 

@@ -1,93 +1,103 @@
-"""Motor analítico: anti-desperdicio (productos perecederos próximos a vencer)."""
+"""Analytics: productos perecederos en riesgo de vencimiento."""
+
+from __future__ import annotations
+
+from datetime import date
 
 import pandas as pd
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def calcular_riesgo_desperdicio(
-    pos_db: AsyncSession,
-    empresa_id: int,
-    fecha_referencia: str,
-) -> dict:
-    """Identifica productos perecederos en riesgo de vencer sin venderse.
+def calcular_perecederos_riesgo(
+    df_inventario: pd.DataFrame,
+    df_velocidad: pd.DataFrame,
+    df_catalogo: pd.DataFrame,
+    fecha_referencia: date,
+    dias_max: int = 14,
+    limite: int = 10,
+) -> list[dict]:
+    """Identifica productos perecederos con riesgo de perdida por vencimiento.
+
+    Solo incluye productos con fecha_vencimiento IS NOT NULL, dias restantes <= dias_max,
+    y unidades_en_riesgo > 0.
 
     Args:
-        pos_db: Sesión read-only a la DB del POS.
-        empresa_id: ID de la empresa.
-        fecha_referencia: Fecha actual o de referencia (YYYY-MM-DD).
+        df_inventario: Inventario con fecha_vencimiento y stock_actual.
+        df_velocidad: DataFrame con id_producto y velocidad_diaria.
+        df_catalogo: Productos con precio_compra y nombre.
+        fecha_referencia: Fecha de referencia para calcular dias restantes.
+        dias_max: Umbral maximo de dias para incluir.
+        limite: Maximo de registros a retornar.
 
     Returns:
-        Dict con productos en riesgo crítico, vigilancia, y patrones.
+        Lista de dicts con estructura del payload perecederos_riesgo.
     """
-    # Productos perecederos con fecha de vencimiento próxima
-    query_perecederos = text("""
-        SELECT
-            p.id AS producto_id,
-            p.nombre,
-            c.nombre AS categoria,
-            i.stock_actual,
-            p.fecha_vencimiento,
-            (p.fecha_vencimiento - CAST(:fecha_referencia AS DATE)) AS dias_restantes,
-            p.precio_venta,
-            p.precio_compra
-        FROM productos p
-        JOIN inventario i ON p.id = i.id_producto
-        LEFT JOIN categorias c ON p.id_categoria = c.id
-        WHERE p.id_empresa = :empresa_id
-          AND p.es_perecedero = true
-          AND p.fecha_vencimiento IS NOT NULL
-          AND p.fecha_vencimiento > CAST(:fecha_referencia AS DATE)
-          AND i.stock_actual > 0
-        ORDER BY p.fecha_vencimiento ASC
-    """)
+    if df_inventario.empty:
+        return []
 
-    # Velocidad de venta promedio por producto (últimos 30 días)
-    query_velocidad = text("""
-        SELECT
-            dv.id_producto AS producto_id,
-            SUM(dv.cantidad) / 30.0 AS venta_diaria_promedio
-        FROM detalle_venta dv
-        JOIN ventas v ON dv.id_venta = v.id
-        WHERE v.id_empresa = :empresa_id
-          AND v.fecha_venta >= (CAST(:fecha_referencia AS DATE) - INTERVAL '30 days')
-          AND v.estado = 'completada'
-        GROUP BY dv.id_producto
-    """)
+    df_inv = df_inventario.copy()
+    df_inv = df_inv[df_inv["fecha_vencimiento"].notna()].copy()
 
-    result_p = await pos_db.execute(
-        query_perecederos,
-        {"empresa_id": empresa_id, "fecha_referencia": fecha_referencia},
-    )
-    result_v = await pos_db.execute(
-        query_velocidad,
-        {"empresa_id": empresa_id, "fecha_referencia": fecha_referencia},
+    if df_inv.empty:
+        return []
+
+    df_inv["fecha_vencimiento"] = pd.to_datetime(df_inv["fecha_vencimiento"])
+    df_inv["stock_actual"] = pd.to_numeric(df_inv["stock_actual"], errors="coerce").fillna(0)
+    df_inv["dias_restantes"] = (
+        df_inv["fecha_vencimiento"] - pd.Timestamp(fecha_referencia)
+    ).dt.days
+
+    df_inv = df_inv[df_inv["dias_restantes"] <= dias_max]
+    df_inv = df_inv[df_inv["stock_actual"] > 0]
+
+    if df_inv.empty:
+        return []
+
+    # Agrupar por producto (puede haber multiples entradas por sucursal)
+    agg = (
+        df_inv.groupby("id_producto")
+        .agg(
+            stock=("stock_actual", "sum"),
+            fecha_vencimiento=("fecha_vencimiento", "min"),
+            dias_restantes=("dias_restantes", "min"),
+        )
+        .reset_index()
     )
 
-    perecederos = pd.DataFrame(result_p.mappings().all())
-    velocidad = pd.DataFrame(result_v.mappings().all())
+    if not df_velocidad.empty and "id_producto" in df_velocidad.columns:
+        agg = agg.merge(df_velocidad[["id_producto", "velocidad_diaria"]], on="id_producto", how="left")
+    else:
+        agg["velocidad_diaria"] = 0.0
+    agg["velocidad_diaria"] = agg["velocidad_diaria"].fillna(0)
 
-    if perecederos.empty:
-        return {"riesgo_critico": [], "vigilancia": [], "perdida_estimada": 0}
-
-    # Merge velocidad de venta
-    df = perecederos.merge(velocidad, on="producto_id", how="left")
-    df["venta_diaria_promedio"] = df["venta_diaria_promedio"].fillna(0)
-
-    # Calcular unidades en riesgo
-    df["unidades_vendibles"] = df["venta_diaria_promedio"] * df["dias_restantes"]
-    df["unidades_en_riesgo"] = (df["stock_actual"] - df["unidades_vendibles"]).clip(lower=0)
-    df["perdida_estimada"] = df["unidades_en_riesgo"] * df["precio_compra"]
-
-    # Clasificar por urgencia
-    critico = df[df["dias_restantes"] <= 7].to_dict(orient="records")
-    vigilancia = df[(df["dias_restantes"] > 7) & (df["dias_restantes"] <= 30)].to_dict(
-        orient="records"
+    if not df_catalogo.empty and "id_producto" in df_catalogo.columns:
+        cols_cat = [c for c in ["id_producto", "nombre", "precio_compra"] if c in df_catalogo.columns]
+        agg = agg.merge(df_catalogo[cols_cat], on="id_producto", how="left")
+    agg["nombre"] = agg.get("nombre", pd.Series(dtype=str)).fillna(
+        agg["id_producto"].apply(lambda x: f"Producto {x}")
     )
+    agg["precio_compra"] = pd.to_numeric(agg.get("precio_compra", 0), errors="coerce").fillna(0)
 
-    return {
-        "riesgo_critico": critico,
-        "vigilancia": vigilancia,
-        "perdida_estimada_total": float(df["perdida_estimada"].sum()),
-        "total_productos_en_riesgo": int((df["unidades_en_riesgo"] > 0).sum()),
-    }
+    agg["unidades_vendibles_proyectadas"] = (
+        agg["velocidad_diaria"] * agg["dias_restantes"].clip(lower=0)
+    ).round(1)
+    agg["unidades_en_riesgo"] = (agg["stock"] - agg["unidades_vendibles_proyectadas"]).clip(lower=0).round(1)
+    agg["perdida_estimada"] = (agg["unidades_en_riesgo"] * agg["precio_compra"]).round(0)
+
+    agg = agg[agg["unidades_en_riesgo"] > 0].sort_values("dias_restantes")
+
+    resultado = []
+    for _, row in agg.head(limite).iterrows():
+        resultado.append(
+            {
+                "id_producto": int(row["id_producto"]),
+                "nombre": str(row["nombre"]),
+                "stock": int(round(float(row["stock"]))),
+                "fecha_vencimiento": row["fecha_vencimiento"].strftime("%Y-%m-%d"),
+                "dias_restantes": int(row["dias_restantes"]),
+                "velocidad_diaria": round(float(row["velocidad_diaria"]), 2),
+                "unidades_vendibles_proyectadas": float(row["unidades_vendibles_proyectadas"]),
+                "unidades_en_riesgo": float(row["unidades_en_riesgo"]),
+                "perdida_estimada": int(round(float(row["perdida_estimada"]))),
+            }
+        )
+    return resultado

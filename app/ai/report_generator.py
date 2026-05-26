@@ -1,5 +1,7 @@
 """Generador de reportes — orquesta el Analytics Engine con el LLM."""
 
+import json
+import re
 from pathlib import Path
 
 from app.ai.router import get_llm_client
@@ -16,48 +18,90 @@ def load_template(report_type: ReportType) -> str:
     return template_path.read_text(encoding="utf-8")
 
 
+def _extract_json(raw: str) -> dict:
+    """Extrae el primer objeto JSON de la respuesta del LLM.
+
+    Tolera respuestas envueltas en bloques ```json ... ``` o con texto
+    introductorio antes del JSON, lo cual es común con modelos locales.
+    """
+    # 1. Intento directo
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+
+    # 2. Quitar fences ```json ... ```
+    fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
+    if fence_match:
+        try:
+            return json.loads(fence_match.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # 3. Buscar el primer {...} balanceado
+    start = raw.find("{")
+    if start != -1:
+        depth = 0
+        for i in range(start, len(raw)):
+            if raw[i] == "{":
+                depth += 1
+            elif raw[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    candidate = raw[start : i + 1]
+                    try:
+                        return json.loads(candidate)
+                    except json.JSONDecodeError:
+                        break
+
+    raise ValueError(
+        f"La respuesta del LLM no contiene JSON válido. Respuesta cruda:\n{raw[:500]}"
+    )
+
+
 async def generate_report_content(
     report_type: ReportType,
     analytics_data: dict,
     empresa_nombre: str,
     periodo: str,
 ) -> dict:
-    """Genera el contenido narrativo del reporte usando el LLM apropiado.
+    """Genera el contenido del reporte usando el LLM apropiado.
 
     Args:
         report_type: Tipo de reporte a generar.
         analytics_data: Datos ya procesados por el Analytics Engine.
         empresa_nombre: Nombre de la empresa para personalización.
-        periodo: Período del reporte (ej: "1 Mar 2026 - 31 Mar 2026").
+        periodo: Período del reporte (ej: "2026-04-01 → 2026-04-30").
 
     Returns:
-        Dict con resumen, sugerencias y datos formateados.
+        Dict con: resumen (str), insights (list), recomendaciones (list),
+        datos (los analytics originales).
     """
-    # 1. Seleccionar modelo según tipo de reporte
     client = get_llm_client(report_type)
-
-    # 2. Cargar template y rellenar con datos
     template = load_template(report_type)
+
+    datos_formateados = json.dumps(
+        analytics_data, indent=2, ensure_ascii=False, default=str
+    )
     prompt = template.format(
         empresa=empresa_nombre,
         periodo=periodo,
-        datos=analytics_data,
+        datos=datos_formateados,
     )
 
-    # 3. System prompt común
     system = (
-        "Eres un analista de negocios experto para tiendas, cafeterías y minimarkets en Colombia. "
-        "Generas reportes claros, accionables y en español. "
-        "Tus sugerencias deben ser específicas, con números concretos cuando sea posible. "
-        "Evita generalidades. Cada sugerencia debe indicar QUÉ hacer, POR QUÉ y el impacto estimado."
+        "Eres un analista de negocios experto para tiendas, cafeterías y "
+        "minimarkets en Colombia. Respondes únicamente con JSON válido "
+        "según el esquema solicitado. Sin texto adicional, sin markdown, "
+        "sin bloques de código."
     )
 
-    # 4. Generar narrativa
-    response = await client.generate(prompt=prompt, system=system)
+    raw_response = await client.generate(prompt=prompt, system=system)
+    parsed = _extract_json(raw_response)
 
-    # TODO: parsear respuesta del LLM en estructura (resumen + sugerencias)
     return {
-        "resumen": response,
-        "sugerencias": [],  # TODO: extraer sugerencias del response
+        "resumen": parsed.get("resumen", ""),
+        "insights": parsed.get("insights", []),
+        "recomendaciones": parsed.get("recomendaciones", []),
         "datos": analytics_data,
     }
