@@ -1,17 +1,31 @@
-Analiza los patrones de venta por hora y día de la semana para {empresa} durante el período {periodo}.
+Analiza el patrón horario de {empresa} en el período {periodo} para ayudar al dueño a tomar decisiones de horario: en qué horas REDUCIR GASTOS (personal y logística) y en qué horas REFORZAR la operación.
 
-## Datos del análisis
+## Datos
 
 {datos}
 
-## Instrucciones
+## Cómo leer los datos
+- matriz_hora_dia: cada registro tiene h (hora 0-23), d (día: 0=domingo, 1=lunes, ..., 6=sábado), v (ventas COP) y t (número de transacciones).
+- horas_pico / horas_valle: horas de mayor y menor movimiento.
+- dia_pico / dia_valle: día más fuerte y más flojo de la semana.
 
-Genera un reporte de "horas mágicas" que incluya:
+## Reglas
+1. Solo cuentan como horas valle ÚTILES las que caen dentro del horario real de atención (donde hay algo de movimiento). Descarta horas de madrugada o cierre donde casi no hay transacciones: ahí no hay nada que optimizar.
+2. Hora valle útil = baja venta + pocas transacciones = el dueño puede atender solo.
+3. Hora pico = alta venta + muchas transacciones = momento de mayor exigencia operativa.
+4. Cruza las franjas con el día valle y el día pico para señalar los momentos más tranquilos y más intensos de la semana.
 
-1. **Horas pico**: Las 3 franjas horarias con más ventas. Indicar monto promedio y volumen.
-2. **Horas valle**: Las 3 franjas con menos actividad.
-3. **Patrones por día**: ¿Qué días son más fuertes? ¿Cuáles más débiles?
-4. **Sugerencias de personal**: Cuándo reforzar y cuándo reducir personal.
-5. **Sugerencias de promociones por horario**: Promociones específicas para horas valle.
+## Respuesta
+Dos secciones cortas, tono directo, de "tú" al dueño, sin tecnicismos, español colombiano, moneda COP. Sin listas largas ni explicación de los datos: solo recomendaciones accionables.
 
-Responde en español colombiano. Usa moneda COP. Sé concreto con horarios y días.
+**Horas valle** (máximo 4 líneas):
+- En qué franja(s) el negocio está más flojo.
+- Personal: ahí el dueño puede solo, o puede recortar turno / dar descanso a un trabajador sin afectar ventas.
+- Proveedores y tareas: esa misma franja sirve para recibir pedidos, hacer inventario o cuadrar cuentas, porque no interrumpe ventas.
+
+**Horas pico** (máximo 4 líneas):
+- En qué franja(s) el negocio está más cargado.
+- Personal: ahí NO se puede recortar ni dar descansos; es cuando más mano de obra se necesita. Si hoy atiende solo, conviene un ayudante en esa franja.
+- Proveedores y tareas: NO recibir pedidos, encomiendas ni hacer tareas administrativas en esas horas; toda la atención debe estar en los clientes.
+
+Cierra ambas secciones siendo concreto con la franja horaria y el día cuando los datos lo permitan.

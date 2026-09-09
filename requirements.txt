@@ -24,6 +24,7 @@ mlxtend==0.23.*  # Apriori algorithm
 # LLM clients
 anthropic==0.42.*
 google-genai==1.*
+openai==1.*
 
 # PDF generation
 weasyprint==63.*

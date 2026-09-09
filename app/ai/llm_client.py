@@ -1,8 +1,9 @@
-"""Cliente unificado para LLMs (Gemini Flash + Claude Sonnet + LM Studio)."""
+"""Cliente unificado para LLMs (Gemini Flash + Claude Sonnet + OpenAI + LM Studio)."""
 
 from abc import ABC, abstractmethod
 
 import httpx
+from openai import AsyncOpenAI
 
 from app.core.config import get_settings
 
@@ -40,17 +41,20 @@ class LMStudioClient(BaseLLMClient):
             "model": self.model,
             "messages": messages,
             "temperature": 0.3,
-            "max_tokens": 2048,
+            "max_tokens": 4096,
         }
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             response = await client.post(
                 f"{self.base_url}/v1/chat/completions",
                 json=payload,
             )
             response.raise_for_status()
             data = response.json()
-            return data["choices"][0]["message"]["content"]
+            message = data["choices"][0]["message"]
+            # Modelos con reasoning (ej: Gemma 4) ponen la respuesta en
+            # reasoning_content cuando content viene vacío
+            return message.get("content") or message.get("reasoning_content", "")
 
 
 class GeminiClient(BaseLLMClient):
@@ -77,23 +81,45 @@ class GeminiClient(BaseLLMClient):
         raise NotImplementedError("Pendiente: implementar Gemini client")
 
 
+class OpenAIClient(BaseLLMClient):
+    """Cliente para OpenAI (GPT-4o por defecto)."""
+
+    def __init__(self):
+        self._client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.model = settings.openai_model
+
+    async def generate(self, prompt: str, system: str = "") -> str:
+        """Genera texto con OpenAI."""
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
+        response = await self._client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=0.3,
+            max_tokens=2048,
+        )
+        return response.choices[0].message.content
+
+
 class ClaudeClient(BaseLLMClient):
     """Cliente para Claude Sonnet 4.6 (reportes premium)."""
 
     def __init__(self):
-        # TODO: inicializar anthropic.AsyncAnthropic con settings.anthropic_api_key
+        import anthropic
+        self._anthropic = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
         self.model_name = "claude-sonnet-4-6-20250514"
 
     async def generate(self, prompt: str, system: str = "") -> str:
         """Genera texto con Claude Sonnet."""
-        # TODO: implementar llamada a Anthropic API
-        # import anthropic
-        # client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-        # message = await client.messages.create(
-        #     model=self.model_name,
-        #     max_tokens=2048,
-        #     system=system,
-        #     messages=[{"role": "user", "content": prompt}],
-        # )
-        # return message.content[0].text
-        raise NotImplementedError("Pendiente: implementar Claude client")
+        kwargs = {
+            "model": self.model_name,
+            "max_tokens": 2048,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if system:
+            kwargs["system"] = system
+        message = await self._anthropic.messages.create(**kwargs)
+        return message.content[0].text

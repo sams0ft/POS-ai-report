@@ -20,6 +20,11 @@ class ExtractCompras(BaseExtractor):
     async def extract(self) -> list[dict]:
         """Extrae compras + detalle de los últimos 180 días.
 
+        Se excluyen únicamente las compras canceladas. `compra.estado` admite
+        'pendiente', 'pagada', 'abonada' y 'cancelada' — el valor 'registrada'
+        que se filtraba antes no es válido en el esquema, así que la query no
+        devolvía nunca filas.
+
         Returns:
             Lista de dicts — una fila por línea de detalle_compra.
             Nota: costo_unitario (no precio_unitario).
@@ -43,7 +48,7 @@ class ExtractCompras(BaseExtractor):
             JOIN system_pos.detalle_compra dc ON c.id_compra = dc.id_compra
             WHERE c.id_empresa = :empresa_id
               AND c.fecha_compra::date BETWEEN :fecha_inicio AND :fecha_hasta
-              AND c.estado = 'registrada'
+              AND c.estado <> 'cancelada'
             ORDER BY c.id_proveedor, dc.id_producto, c.fecha_compra
             """,
             {

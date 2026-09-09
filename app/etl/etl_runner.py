@@ -1,6 +1,6 @@
 """Orquestador del ETL: extract → transform → load → JSON.
 
-Produce un payload analítico con las 17 claves del schema v1.0.
+Produce un payload analítico con las 16 claves del schema v1.0.
 
 Uso manual:
     python -m app.etl.etl_runner --empresa-id 1 --fecha-desde 2026-04-01 --fecha-hasta 2026-04-30
@@ -25,6 +25,7 @@ from app.etl.extractors.extract_gastos import ExtractGastos
 from app.etl.extractors.extract_inventario import ExtractInventario
 from app.etl.extractors.extract_ventas import ExtractVentas
 from app.etl.loaders.json_loader import save_json
+from app.analytics.flash_sales import get_flash_sales_data
 from app.etl.transformers import (
     transform_afinidad,
     transform_anomalias,
@@ -32,12 +33,12 @@ from app.etl.transformers import (
     transform_gastos,
     transform_inventario,
     transform_meta,
-    transform_metodos_pago,
     transform_patron_horario,
     transform_productos,
     transform_proveedores,
     transform_resumen_ejecutivo,
     transform_sucursales,
+    transform_ventas_flash,
     transform_ventas_serie,
 )
 
@@ -49,7 +50,7 @@ VENTANA_VELOCIDAD_DIAS = 30
 
 
 async def run_etl(empresa_id: int, fecha_desde: date, fecha_hasta: date) -> Path:
-    """Ejecuta el ETL completo y produce el JSON analítico con 17 secciones.
+    """Ejecuta el ETL completo y produce el JSON analítico con 16 secciones.
 
     Flujo:
         1. Calcular ventanas temporales (período actual, comparación, velocidad).
@@ -142,6 +143,16 @@ async def run_etl(empresa_id: int, fecha_desde: date, fecha_hasta: date) -> Path
         log.info("etl.extraido.gastos", filas=len(resultado))
         return resultado
 
+    async def _flash_sales() -> dict:
+        async with PosSession() as db:
+            resultado = await get_flash_sales_data(db, empresa_id, fecha_desde, fecha_hasta)
+        log.info(
+            "etl.extraido.flash_sales",
+            dias_debil=len(resultado.get("dia_debil_crudo", [])),
+            pool=len(resultado.get("pool_productos_crudo", [])),
+        )
+        return resultado
+
     # Extraer todo en paralelo
     log.info("etl.extraccion.inicio")
     (
@@ -152,6 +163,7 @@ async def run_etl(empresa_id: int, fecha_desde: date, fecha_hasta: date) -> Path
         raw_inventario,
         raw_compras,
         raw_gastos,
+        raw_flash_sales,
     ) = await asyncio.gather(
         _empresa_info(),
         _historico_cliente(),
@@ -160,6 +172,7 @@ async def run_etl(empresa_id: int, fecha_desde: date, fecha_hasta: date) -> Path
         _inventario(),
         _compras(),
         _gastos(),
+        _flash_sales(),
     )
     log.info("etl.extraccion.completada")
 
@@ -279,7 +292,7 @@ async def run_etl(empresa_id: int, fecha_desde: date, fecha_hasta: date) -> Path
 
     patron = transform_patron_horario.transform(df_ventas_actual)
 
-    metodos = transform_metodos_pago.transform(df_ventas_actual)
+    ventas_flash = transform_ventas_flash.transform(raw_flash_sales, dias_periodo, fecha_hasta)
 
     top, bottom, categorias = transform_productos.transform(
         df_ventas_actual,
@@ -323,7 +336,7 @@ async def run_etl(empresa_id: int, fecha_desde: date, fecha_hasta: date) -> Path
         "resumen_ejecutivo": resumen,
         "ventas_serie_diaria": ventas_serie,
         "patron_horario": patron,
-        "metodos_pago": metodos,
+        "ventas_flash": ventas_flash,
         "productos_top": top,
         "productos_bottom": bottom,
         "categorias": categorias,

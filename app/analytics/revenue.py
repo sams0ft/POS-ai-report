@@ -60,44 +60,6 @@ def calcular_serie_diaria(
     }
 
 
-def calcular_metodos_pago(df_ventas: pd.DataFrame) -> list[dict]:
-    """Agrega ventas por método de pago.
-
-    Args:
-        df_ventas: Líneas de detalle_venta con id_metodo_pago y metodo_pago_nombre.
-
-    Returns:
-        Lista de dicts con id, nombre, monto, transacciones, pct. Ordenada por monto desc.
-    """
-    if df_ventas.empty:
-        return []
-
-    df_cab = df_ventas.drop_duplicates(subset=["id_venta"]).copy()
-    df_cab["total"] = pd.to_numeric(df_cab["total"], errors="coerce").fillna(0)
-
-    agg = (
-        df_cab.groupby(["id_metodo_pago", "metodo_pago_nombre"])
-        .agg(monto=("total", "sum"), transacciones=("id_venta", "count"))
-        .reset_index()
-    )
-    total_global = float(agg["monto"].sum())
-
-    resultado = []
-    for _, row in agg.sort_values("monto", ascending=False).iterrows():
-        monto = float(row["monto"])
-        pct = round(monto / total_global * 100, 2) if total_global > 0 else 0.0
-        resultado.append(
-            {
-                "id": int(row["id_metodo_pago"]),
-                "nombre": str(row["metodo_pago_nombre"]),
-                "monto": int(round(monto)),
-                "transacciones": int(row["transacciones"]),
-                "pct": pct,
-            }
-        )
-    return resultado
-
-
 def calcular_por_sucursal(
     df_ventas: pd.DataFrame,
     df_sucursales: pd.DataFrame,

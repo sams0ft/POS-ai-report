@@ -30,7 +30,7 @@ class ExtractCatalogo(BaseExtractor):
         productos = await self._execute(
             """
             SELECT id_producto, id_categoria, id_marca, id_proveedor,
-                   codigo_barras, nombre, descripcion, precio_compra,
+                   nombre, descripcion, precio_compra,
                    precio_venta, stock_minimo, controla_inventario, unidad, estado
             FROM system_pos.producto
             WHERE id_empresa = :empresa_id AND estado = true

@@ -1,107 +1,116 @@
-"""Generador de reportes — orquesta el Analytics Engine con el LLM."""
+"""Generador de reportes — orquesta el ETL JSON con LM Studio."""
 
 import json
 import re
 from pathlib import Path
 
-from app.ai.router import get_llm_client
-from app.schemas.reports import ReportType
+from app.ai.llm_client import OpenAIClient
 
-TEMPLATES_DIR = Path(__file__).parent / "prompt_templates"
-
-
-def load_template(report_type: ReportType) -> str:
-    """Carga el prompt template correspondiente al tipo de reporte."""
-    template_path = TEMPLATES_DIR / f"{report_type.value}.txt"
-    if not template_path.exists():
-        raise FileNotFoundError(f"Template no encontrado: {template_path}")
-    return template_path.read_text(encoding="utf-8")
+_GENERAL_PROMPT = Path(__file__).parent / "prompt_templates" / "general_prompt.txt"
 
 
-def _extract_json(raw: str) -> dict:
-    """Extrae el primer objeto JSON de la respuesta del LLM.
+def _load_template() -> str:
+    return _GENERAL_PROMPT.read_text(encoding="utf-8")
 
-    Tolera respuestas envueltas en bloques ```json ... ``` o con texto
-    introductorio antes del JSON, lo cual es común con modelos locales.
+
+def _extract_sugerencias(text: str) -> list[str]:
+    """Extrae sugerencias de una respuesta markdown del LLM.
+
+    Estrategia:
+        1. Líneas numeradas (1., 2., ...)
+        2. Bullets (-, *, •)
+        3. Fallback: últimos 3 párrafos
     """
-    # 1. Intento directo
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        pass
+    lines = text.splitlines()
 
-    # 2. Quitar fences ```json ... ```
-    fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
-    if fence_match:
-        try:
-            return json.loads(fence_match.group(1))
-        except json.JSONDecodeError:
-            pass
+    numbered = [
+        re.sub(r"^\d+\.\s*", "", line.strip())
+        for line in lines
+        if re.match(r"^\d+\.\s+\S", line.strip())
+    ]
+    if numbered:
+        return numbered
 
-    # 3. Buscar el primer {...} balanceado
-    start = raw.find("{")
-    if start != -1:
-        depth = 0
-        for i in range(start, len(raw)):
-            if raw[i] == "{":
-                depth += 1
-            elif raw[i] == "}":
-                depth -= 1
-                if depth == 0:
-                    candidate = raw[start : i + 1]
-                    try:
-                        return json.loads(candidate)
-                    except json.JSONDecodeError:
-                        break
+    bullets = [
+        re.sub(r"^[-*•]\s*", "", line.strip())
+        for line in lines
+        if re.match(r"^[-*•]\s+\S", line.strip())
+    ]
+    if bullets:
+        return bullets
 
-    raise ValueError(
-        f"La respuesta del LLM no contiene JSON válido. Respuesta cruda:\n{raw[:500]}"
-    )
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    return paragraphs[-3:] if paragraphs else []
+
+
+def _trim_payload(data: dict) -> dict:
+    """Recorta el payload ETL a las secciones esenciales para el LLM.
+
+    Mantiene las claves analíticas clave y limita listas largas,
+    para no exceder el contexto del modelo (~4096 tokens).
+    """
+    meta = data.get("meta", {})
+    return {
+        "meta": meta,
+        "resumen_ejecutivo": data.get("resumen_ejecutivo", {}),
+        "ventas_serie_diaria": {
+            "fechas": data.get("ventas_serie_diaria", {}).get("fechas", [])[-7:],
+            "ingresos": data.get("ventas_serie_diaria", {}).get("ingresos", [])[-7:],
+            "transacciones": data.get("ventas_serie_diaria", {}).get("transacciones", [])[-7:],
+        },
+        "patron_horario": {
+            k: v for k, v in data.get("patron_horario", {}).items()
+            if k != "matriz_hora_dia"
+        },
+        "productos_top": data.get("productos_top", [])[:5],
+        "productos_bottom": data.get("productos_bottom", [])[:5],
+        "categorias": data.get("categorias", [])[:5],
+        "inventario_salud": data.get("inventario_salud", {}),
+        "alertas_stock": data.get("alertas_stock", [])[:5],
+        "perecederos_riesgo": data.get("perecederos_riesgo", [])[:3],
+        "ventas_flash": data.get("ventas_flash"),
+        "proveedores_top": data.get("proveedores_top", [])[:3],
+        "clientes_resumen": data.get("clientes_resumen", {}),
+        "gastos_breakdown": data.get("gastos_breakdown", [])[:8],
+        "sucursales": data.get("sucursales", [])[:3],
+        "anomalias_detectadas": data.get("anomalias_detectadas", [])[:5],
+    }
 
 
 async def generate_report_content(
-    report_type: ReportType,
     analytics_data: dict,
     empresa_nombre: str,
     periodo: str,
 ) -> dict:
-    """Genera el contenido del reporte usando el LLM apropiado.
+    """Genera el análisis completo del negocio usando LM Studio.
 
     Args:
-        report_type: Tipo de reporte a generar.
-        analytics_data: Datos ya procesados por el Analytics Engine.
+        analytics_data: Dict completo del ETL (17 secciones schema v1.0).
         empresa_nombre: Nombre de la empresa para personalización.
-        periodo: Período del reporte (ej: "2026-04-01 → 2026-04-30").
+        periodo: Período legible (ej: "1 Abr 2026 – 30 Abr 2026").
 
     Returns:
-        Dict con: resumen (str), insights (list), recomendaciones (list),
-        datos (los analytics originales).
+        Dict con claves: resumen (str), sugerencias (list[str]), datos (dict).
     """
-    client = get_llm_client(report_type)
-    template = load_template(report_type)
+    client = OpenAIClient()
+    template = _load_template()
 
-    datos_formateados = json.dumps(
-        analytics_data, indent=2, ensure_ascii=False, default=str
+    trimmed = _trim_payload(analytics_data)
+    datos_json = json.dumps(trimmed, ensure_ascii=False, default=str)
+    ventas_flash_json = json.dumps(
+        analytics_data.get("ventas_flash") or {}, ensure_ascii=False, default=str
     )
     prompt = template.format(
         empresa=empresa_nombre,
         periodo=periodo,
-        datos=datos_formateados,
+        datos=datos_json,
+        ventas_flash=ventas_flash_json,
     )
 
-    system = (
-        "Eres un analista de negocios experto para tiendas, cafeterías y "
-        "minimarkets en Colombia. Respondes únicamente con JSON válido "
-        "según el esquema solicitado. Sin texto adicional, sin markdown, "
-        "sin bloques de código."
-    )
-
-    raw_response = await client.generate(prompt=prompt, system=system)
-    parsed = _extract_json(raw_response)
+    raw_response = await client.generate(prompt=prompt)
 
     return {
-        "resumen": parsed.get("resumen", ""),
-        "insights": parsed.get("insights", []),
-        "recomendaciones": parsed.get("recomendaciones", []),
+        "resumen": raw_response,
+        "sugerencias": _extract_sugerencias(raw_response),
         "datos": analytics_data,
     }

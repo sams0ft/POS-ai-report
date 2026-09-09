@@ -1,9 +1,16 @@
 __pycache__/
 *.py[cod]
 *.so
-.env
 .venv/
 venv/
+
+# Credenciales — .env y cualquier respaldo suyo (.env.bak, .env.local, ...)
+.env
+.env.*
+!.env.example
+
+# Salida del ETL: datos reales de empresas cliente, nunca al repo
+app/etl/output/*.json
 *.egg-info/
 dist/
 build/

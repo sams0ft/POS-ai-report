@@ -1,4 +1,4 @@
-"""Extractor de ventas (venta + detalle_venta + metodo_pago)."""
+"""Extractor de ventas (venta + detalle_venta)."""
 
 from app.etl.extractors.base_extractor import BaseExtractor
 
@@ -24,7 +24,6 @@ class ExtractVentas(BaseExtractor):
                 v.id_sucursal,
                 v.id_cliente,
                 v.id_usuario,
-                v.id_metodo_pago,
                 v.numero_venta,
                 v.fecha_venta,
                 v.subtotal,
@@ -36,11 +35,9 @@ class ExtractVentas(BaseExtractor):
                 dv.cantidad,
                 dv.precio_unitario,
                 dv.descuento AS descuento_linea,
-                dv.subtotal AS subtotal_linea,
-                mp.nombre AS metodo_pago_nombre
+                dv.subtotal AS subtotal_linea
             FROM system_pos.venta v
             JOIN system_pos.detalle_venta dv ON v.id_venta = dv.id_venta
-            JOIN system_pos.metodo_pago mp ON v.id_metodo_pago = mp.id_metodo_pago
             WHERE v.id_empresa = :empresa_id
               AND v.estado = 'completada'
               AND v.fecha_venta::date BETWEEN :fecha_desde AND :fecha_hasta

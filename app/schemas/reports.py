@@ -34,9 +34,9 @@ class ReportRequest(BaseModel):
     """Solicitud de generación de reporte."""
 
     empresa_id: int
-    report_type: ReportType
     fecha_desde: date
     fecha_hasta: date
+    report_type: ReportType | None = None
     parametros: dict | None = Field(default=None, description="Parámetros adicionales por tipo")
 
 
@@ -64,7 +64,7 @@ class ReportResponse(BaseModel):
 
     report_id: str
     empresa_id: int
-    report_type: ReportType
+    report_type: ReportType | None = None
     status: ReportStatus
     fecha_desde: date
     fecha_hasta: date
@@ -73,6 +73,9 @@ class ReportResponse(BaseModel):
 
     # Contenido del reporte (solo cuando status=completed)
     resumen: str | None = None
+    sugerencias: list[str] = Field(
+        default_factory=list, description="Acciones accionables extraídas del análisis"
+    )
     datos: dict[str, Any] | None = Field(
         default=None, description="Datos numéricos del análisis"
     )
